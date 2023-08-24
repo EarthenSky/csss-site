@@ -170,7 +170,8 @@ def save_officer_and_grant_digital_resources(officer_emaillist_and_position_mapp
             f" for position {position_name}"
         )
     success, error_message = assign_discord_roles(
-        position_mapping_for_new_officer.discord_role_name, unprocessed_officer.discord_id, term_obj
+        position_mapping_for_new_officer.discord_role_name, unprocessed_officer.discord_id, term_obj,
+        role_is_executive_officer=position_mapping_for_new_officer.executive_officer
     )
     if not success:
         return success, error_message
@@ -180,7 +181,9 @@ def save_officer_and_grant_digital_resources(officer_emaillist_and_position_mapp
     )
     if not success:
         return success, error_message
-    alert_sys_admin_to_update_email_list(sfu_officer_mailing_list_email)
+    alert_sys_admin_to_update_email_list(
+        sfu_officer_mailing_list_email, position_mapping_for_new_officer.bitwarden_access
+    )
     if not success:
         return success, error_message
     officer_obj.save()

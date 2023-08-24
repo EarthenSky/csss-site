@@ -1,5 +1,8 @@
 import logging
 
+from django.conf import settings
+from django.core.exceptions import AppRegistryNotReady
+
 barrier_logging_level = logging.ERROR
 
 
@@ -16,7 +19,6 @@ class CSSSErrorHandler(logging.StreamHandler):
         super().__init__(stream)
 
     def emit(self, record):
-        from csss.models import CSSSError
         endpoint = None
         if record.name == "django.request":
             from csss.setup_logger import Loggers
@@ -32,6 +34,18 @@ class CSSSErrorHandler(logging.StreamHandler):
             message = record.exc_text if record.exc_text is not None else record.message
             request = str(record.__dict__)
             record_type = 'other_record'
-        if len(CSSSError.objects.all().filter(message=message)) == 0:
-            CSSSError(filename=filename, message=message, request=request, endpoint=endpoint, type=record_type).save()
+        try:
+            from csss.models import CSSSError
+            if len(CSSSError.objects.all().filter(message=message).exclude(fixed=True)) == 0:
+                path_after_server_base = len(settings.BASE_DIR) + 1
+                path_before_file_name = filename.rindex("/")
+                file_path_after_base_dir = filename[path_after_server_base:path_before_file_name]
+                file_name = filename[path_before_file_name+1:]
+                CSSSError(file_path=file_path_after_base_dir, filename=file_name, message=message, request=request,
+                          endpoint=endpoint, type=record_type).save()
+        except AppRegistryNotReady:
+            pass
+        except Exception as e:
+            if settings.ENVIRONMENT != "LOCALHOST":
+                raise e
         super().emit(record)
